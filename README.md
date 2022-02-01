@@ -86,7 +86,17 @@ sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-all-p3449-0000
 sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-common-csg1k.dtbo /boot/
 ```
 use this tool to config the CSI Interface:
+
 `sudo /opt/nvidia/jetson-io/jetson-io.py`
+
+configure CSI connector
+
+Configure for compatible hardware
+
+Camera CSG1k dual
+
+save pin changes
+
 
 the new devicetree:
 kernel_tegra210-p3448-0000-p3449-0000-b00-user-custom.dtb
