@@ -49,7 +49,7 @@ ln -s kernel_ams kernel
 patch the files:
 first copy the patch files in the Linux_for_Tegra/source/public folder.
 ```
-patch -p0  < kernel_ams_30092020.patch
+patch -p0  < kernel_30092020.patch
 patch -p0 < hardware_mira130_18012022.patch
 patch -p0 < hardware_mira220_18012022.patch
 patch -p0 < hardware_mira050_18012022.patch
@@ -77,5 +77,20 @@ the newly built kernels and devicetree can be copied and used directly in the ap
 $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/boot/Image
 $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/boot/dts/tegra210-p3448-0000-p3449-0000-a02.dtb
 ```
+## On jetson nano
+copy the new device trees to the nano
+```
+sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-0000-p3449-0000-b00.dtb /boot/
+sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-0000-p3449-0000-b00.dtb /boot/dt/kernel_tegra210-p3448-0000-p3449-0000-b00.dtb
+sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-all-p3449-0000-camera-csg1k-dual.dtbo /boot/
+sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-common-csg1k.dtbo /boot/
+```
+use this tool to config the CSI Interface:
+`sudo /opt/nvidia/jetson-io/jetson-io.py
+
+the new devicetree:
+kernel_tegra210-p3448-0000-p3449-0000-b00-user-custom.dtb
+
+
 They can be used on jetson nano by putting them in the /boot folder (and giving them the proper name)
 `Image` (kernel) and `dtbnano.dtb` (device tree)
