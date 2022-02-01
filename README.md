@@ -35,6 +35,23 @@ JETSON_NANO_KERNEL_SOURCE=$(pwd)
 tar -xf kernel_src.tbz2
 ```
 TBD: patch the files
+```
+patch -p0  < kernel_ams_30092020.patch
+patch -p0 < hardware_mira130_18012022.patch
+patch -p0 < hardware_mira220_18012022.patch
+patch -p0 < hardware_mira050_18012022.patch
+patch -p0 < hardware_mira030_18012022.patch
+
+```
+issue: the hardware patch change the files in hardware_ORIG
+Solution: (go inside the hardware folder and use -p1)
+```
+cd hardware_cgss130
+patch -p1 < hardware_mira130_18012022.patch
+cd hardware_cgss220
+patch -p1 < hardware_mira220_18012022.patch
+```
+
 
 Compile
 ```
