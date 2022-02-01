@@ -46,7 +46,8 @@ create symlinks
 ln -s hardware_mira050 hardware
 ln -s kernel_ams kernel
 ```
-patch the files
+patch the files:
+first copy the patch files in the Linux_for_Tegra/source/public folder.
 ```
 patch -p0  < kernel_ams_30092020.patch
 patch -p0 < hardware_mira130_18012022.patch
