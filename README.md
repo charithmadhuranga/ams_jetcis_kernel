@@ -36,6 +36,18 @@ tar -xf kernel_src.tbz2
 ```
 TBD: patch the files
 ```
+cp kernel kernel_ams -r
+cp hardware hardware_mira050 -r
+mv kernel kernel_orig
+mv hardware hardware_orig
+```
+create symlinks
+```
+ln -s hardware_mira050 hardware
+ln -s kernel_ams kernel
+```
+patch the files
+```
 patch -p0  < kernel_ams_30092020.patch
 patch -p0 < hardware_mira130_18012022.patch
 patch -p0 < hardware_mira220_18012022.patch
@@ -43,14 +55,7 @@ patch -p0 < hardware_mira050_18012022.patch
 patch -p0 < hardware_mira030_18012022.patch
 
 ```
-issue: the hardware patch change the files in hardware_ORIG
-Solution: (go inside the hardware folder and use -p1)
-```
-cd hardware_cgss130
-patch -p1 < hardware_mira130_18012022.patch
-cd hardware_cgss220
-patch -p1 < hardware_mira220_18012022.patch
-```
+
 
 
 Compile
@@ -71,3 +76,5 @@ the newly built kernels and devicetree can be copied and used directly in the ap
 $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/boot/Image
 $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/boot/dts/tegra210-p3448-0000-p3449-0000-a02.dtb
 ```
+They can be used on jetson nano by putting them in the /boot folder (and giving them the proper name)
+`Image` (kernel) and `dtbnano.dtb` (device tree)
