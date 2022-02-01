@@ -1,0 +1,1980 @@
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/Makefile hardware_mira030/nvidia/platform/t210/porg/kernel-dts/Makefile
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/Makefile	2021-07-26 21:08:25.000000000 +0200
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/Makefile	2021-10-19 16:25:04.000000000 +0200
+@@ -31,7 +31,9 @@
+ dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-0000-p3449-0000-a02-m2ke.dtbo
+ dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-common-imx477.dtbo
+ dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-common-imx219.dtbo
++dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-common-csg1k.dtbo
+ dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-all-p3449-0000-camera-imx219-dual.dtbo
++dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-all-p3449-0000-camera-csg1k-dual.dtbo
+ dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-all-p3449-0000-camera-imx477-dual.dtbo
+ dtbo-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3448-all-p3449-0000-camera-imx477-imx219.dtbo
+ 
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-csg1k.dtsi hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-csg1k.dtsi
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-csg1k.dtsi	1970-01-01 01:00:00.000000000 +0100
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-csg1k.dtsi	2021-11-30 12:34:32.785660928 +0100
+@@ -0,0 +1,545 @@
++/*
++ * Copyright (c) 2018-2019, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <dt-bindings/media/camera.h>
++#include <dt-bindings/platform/t210/t210.h>
++
++/ {
++	host1x {
++		vi_base: vi {
++			num-channels = <1>;
++			status="okay";
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++				vi_port0: port@0 {
++					reg = <0>;
++					csg1k_vi_in0: endpoint {
++						port-index = <0>;
++						bus-width = <2>;
++						remote-endpoint = <&csg1k_csi_out0>;
++					};
++				};
++			};
++		};
++
++		csi_base: nvcsi {
++			num-channels = <1>;
++			status="okay";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			csi_chan0: channel@0 {
++				reg = <0>;
++				ports {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					csi_chan0_port0: port@0 {
++						reg = <0>;
++						csg1k_csi_in0: endpoint@0 {
++							port-index = <0>;
++							bus-width = <2>;
++							remote-endpoint = <&csg1k_out0>;
++						};
++					};
++					csi_chan0_port1: port@1 {
++						reg = <1>;
++						csg1k_csi_out0: endpoint@1 {
++							remote-endpoint = <&csg1k_vi_in0>;
++						};
++					};
++				};
++			};
++		};
++
++		i2c@546c0000 {
++			csg1k_single_cam0: csg1k_a@30 {
++				compatible = "nvidia,csg1k";
++				/* I2C device address */
++				reg = <0x30>;
++
++				/* V4L2 device node location */
++				devnode = "video0";
++
++				/* Physical dimensions of sensor */
++				physical_w = "3.680";
++				physical_h = "2.760";
++
++				sensor_model = "csg1k";
++				status="okay";
++				use_sensor_mode_id = "true";
++				sensor-bpp = "12"; // used for V4L2 tools
++				platform-type = "nano"; // used for driver
++				/* Sensor output flip settings */
++				vertical-flip = "true";
++
++				/**
++				* ==== Modes ====
++				* A modeX node is required to support v4l2 driver
++				* implementation with NVIDIA camera software stack
++				*
++				* == Signal properties ==
++				*
++				* phy_mode = "";
++				* PHY mode used by the MIPI lanes for this device
++				*
++				* tegra_sinterface = "";
++				* CSI Serial interface connected to tegra
++				* Incase of virtual HW devices, use virtual
++				* For SW emulated devices, use host
++				*
++				* pix_clk_hz = "";
++				* Sensor pixel clock used for calculations like exposure and framerate
++				*
++				* readout_orientation = "0";
++				* Based on camera module orientation.
++				* Only change readout_orientation if you specifically
++				* Program a different readout order for this mode
++				*
++				* == Image format Properties ==
++				*
++				* active_w = "";
++				* Pixel active region width
++				*
++				* active_h = "";
++				* Pixel active region height
++				*
++				* pixel_t = "";
++				* The sensor readout pixel pattern
++				*
++				* line_length = "";
++				* Pixel line length (width) for sensor mode.
++				*
++				* == Source Control Settings ==
++				*
++				* Gain factor used to convert fixed point integer to float
++				* Gain range [min_gain/gain_factor, max_gain/gain_factor]
++				* Gain step [step_gain/gain_factor is the smallest step that can be configured]
++				* Default gain [Default gain to be initialized for the control.
++				*     use min_gain_val as default for optimal results]
++				* Framerate factor used to convert fixed point integer to float
++				* Framerate range [min_framerate/framerate_factor, max_framerate/framerate_factor]
++				* Framerate step [step_framerate/framerate_factor is the smallest step that can be configured]
++				* Default Framerate [Default framerate to be initialized for the control.
++				*     use max_framerate to get required performance]
++				* Exposure factor used to convert fixed point integer to float
++				* For convenience use 1 sec = 1000000us as conversion factor
++				* Exposure range [min_exp_time/exposure_factor, max_exp_time/exposure_factor]
++				* Exposure step [step_exp_time/exposure_factor is the smallest step that can be configured]
++				* Default Exposure Time [Default exposure to be initialized for the control.
++				*     Set default exposure based on the default_framerate for optimal exposure settings]
++				*
++				* gain_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_gain_val = ""; (ceil to integer)
++				* max_gain_val = ""; (ceil to integer)
++				* step_gain_val = ""; (ceil to integer)
++				* default_gain = ""; (ceil to integer)
++				* Gain limits for mode
++				*
++				* exposure_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_exp_time = ""; (ceil to integer)
++				* max_exp_time = ""; (ceil to integer)
++				* step_exp_time = ""; (ceil to integer)
++				* default_exp_time = ""; (ceil to integer)
++				* Exposure Time limits for mode (sec)
++				*
++				* framerate_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_framerate = ""; (ceil to integer)
++				* max_framerate = ""; (ceil to integer)
++				* step_framerate = ""; (ceil to integer)
++				* default_framerate = ""; (ceil to integer)
++				* Framerate limits for mode (fps)
++				*
++				* embedded_metadata_height = "";
++				* Sensor embedded metadata height in units of rows.
++				* If sensor does not support embedded metadata value should be 0.
++				*/
++				mode0 { //MIRA030_MODE_640X480_0, 12bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "12"; 
++					csi_pixel_bit_depth = "12"; 
++					pixel_t = "bayer_grbg12";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				mode1 { //MIRA030_MODE_480X360_2, 12bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "12"; 
++					csi_pixel_bit_depth = "12"; 
++					pixel_t = "bayer_grbg12";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				mode2 { //MIRA030_MODE_640X480_4, 10bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "10"; 
++					csi_pixel_bit_depth = "10"; 
++					pixel_t = "bayer_grbg10";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode3 { //MIRA030_MODE_480X360_6, 10bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "10"; 
++					csi_pixel_bit_depth = "10"; 
++					pixel_t = "bayer_grbg10";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				mode4 { //MIRA030_MODE_640X480_8, 8bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8"; 
++					csi_pixel_bit_depth = "8"; 
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode5 { //MIRA030_MODE_480X360_10, 8bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8"; 
++					csi_pixel_bit_depth = "8"; 
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode6 { //MIRA030_MODE_640X480_12, 8bit, 1-50fps, 1-lane
++					mclk_khz = "24000";
++					num_lanes = "1"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8";
++					csi_pixel_bit_depth = "8";
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "50000000";/*50*/
++					step_framerate = "1";
++					default_framerate = "50000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				ports {
++					#address-cells = <1>;
++					#size-cells = <0>;
++
++					port@0 {
++						reg = <0>;
++						csg1k_out0: endpoint {
++							port-index = <0>;
++							bus-width = <2>;
++							remote-endpoint = <&csg1k_csi_in0>;
++						};
++					};
++				};
++			};
++		};
++    };
++
++	lens_csg1k@RBPCV2 {
++		min_focus_distance = "0.0";
++		hyper_focal = "0.0";
++		focal_length = "3.04";
++		f_number = "2.0";
++		aperture = "0.0";
++	};
++};
++
++/ {
++	tcp: tegra-camera-platform {
++		compatible = "nvidia, tegra-camera-platform";
++
++		/**
++		* Physical settings to calculate max ISO BW
++		*
++		* num_csi_lanes = <>;
++		* Total number of CSI lanes when all cameras are active
++		*
++		* max_lane_speed = <>;
++		* Max lane speed in Kbit/s
++		*
++		* min_bits_per_pixel = <>;
++		* Min bits per pixel
++		*
++		* vi_peak_byte_per_pixel = <>;
++		* Max byte per pixel for the VI ISO case
++		*
++		* vi_bw_margin_pct = <>;
++		* Vi bandwidth margin in percentage
++		*
++		* max_pixel_rate = <>;
++		* Max pixel rate in Kpixel/s for the ISP ISO case
++		*
++		* isp_peak_byte_per_pixel = <>;
++		* Max byte per pixel for the ISP ISO case
++		*
++		* isp_bw_margin_pct = <>;
++		* Isp bandwidth margin in percentage
++		*/
++		num_csi_lanes = <2>;
++		max_lane_speed = <1500000>;
++		min_bits_per_pixel = <10>;
++		vi_peak_byte_per_pixel = <2>;
++		vi_bw_margin_pct = <25>;
++		max_pixel_rate = <240000>;
++		isp_peak_byte_per_pixel = <5>;
++		isp_bw_margin_pct = <25>;
++
++		/**
++		 * The general guideline for naming badge_info contains 3 parts, and is as follows,
++		 * The first part is the camera_board_id for the module; if the module is in a FFD
++		 * platform, then use the platform name for this part.
++		 * The second part contains the position of the module, ex. "rear" or "front".
++		 * The third part contains the last 6 characters of a part number which is found
++		 * in the module's specsheet from the vendor.
++		 */
++		modules {
++			cam_module0: module0 {
++				badge = "porg_front_RBPCV2";
++				status="okay";
++				position = "front";
++				orientation = "1";
++				cam_module0_drivernode0: drivernode0 {
++					pcl_id = "v4l2_sensor";
++					devname = "csg1k 6-0030";
++					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/csg1k_a@30";
++				};
++				cam_module0_drivernode1: drivernode1 {
++					pcl_id = "v4l2_lens";
++					proc-device-tree = "/proc/device-tree/lens_csg1k@RBPCV2/";
++				};
++			};
++		};
++	};
++};
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-dual-csg1k.dtsi hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-dual-csg1k.dtsi
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-dual-csg1k.dtsi	1970-01-01 01:00:00.000000000 +0100
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-camera-dual-csg1k.dtsi	2021-11-30 12:37:54.227569296 +0100
+@@ -0,0 +1,994 @@
++/*
++ * Copyright (c) 2018-2019, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <dt-bindings/media/camera.h>
++#include <dt-bindings/platform/t210/t210.h>
++
++/ {
++	host1x {
++		vi_base: vi {
++			num-channels = <2>;
++			status="okay";
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
++				vi_port0: port@0 {
++					reg = <0>;
++					csg1k_vi_in0: endpoint {
++						port-index = <0>;
++						bus-width = <2>;
++						remote-endpoint = <&csg1k_csi_out0>;
++					};
++				};
++				vi_port1: port@1 {
++					reg = <1>;
++					csg1k_vi_in1: endpoint {
++						port-index = <4>;
++						bus-width = <2>;
++						remote-endpoint = <&csg1k_csi_out1>;
++					};
++				};
++			};
++		};
++
++		csi_base: nvcsi {
++			num-channels = <2>;
++			status="okay";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			csi_chan0: channel@0 {
++				reg = <0>;
++				ports {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					csi_chan0_port0: port@0 {
++						reg = <0>;
++						csg1k_csi_in0: endpoint@0 {
++							port-index = <0>;
++							bus-width = <2>;
++							remote-endpoint = <&csg1k_dual_out0>;
++						};
++					};
++					csi_chan0_port1: port@1 {
++						reg = <1>;
++						csg1k_csi_out0: endpoint@1 {
++							remote-endpoint = <&csg1k_vi_in0>;
++						};
++					};
++				};
++			};
++			csi_chan1: channel@1 {
++				reg = <1>;
++				ports {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					csi_chan1_port0: port@2 {
++						reg = <0>;
++						csg1k_csi_in1: endpoint@2 {
++							port-index = <4>;
++							bus-width = <2>;
++							remote-endpoint = <&csg1k_out1>;
++						};
++					};
++					csi_chan1_port1: port@3 {
++						reg = <1>;
++						csg1k_csi_out1: endpoint@3 {
++							remote-endpoint = <&csg1k_vi_in1>;
++						};
++					};
++				};
++			};
++		};
++	};
++
++	cam_i2cmux {
++		i2c_0: i2c@0 {
++			csg1k_cam0: csg1k_a@30 {
++				compatible = "nvidia,csg1k";
++				/* I2C device address */
++				reg = <0x30>;
++
++				/* V4L2 device node location */
++				devnode = "video0";
++
++				/* Physical dimensions of sensor */
++				physical_w = "3.680";
++				physical_h = "2.760";
++
++				sensor_model = "csg1k";
++				status="okay";
++				use_sensor_mode_id = "true";
++				sensor-bpp = "12"; // used for V4L2 tools
++				platform-type = "nano"; // used for driver
++				/* Sensor output flip settings */
++				vertical-flip = "true";
++				/**
++				* ==== Modes ====
++				* A modeX node is required to support v4l2 driver
++				* implementation with NVIDIA camera software stack
++				*
++				* == Signal properties ==
++				*
++				* phy_mode = "";
++				* PHY mode used by the MIPI lanes for this device
++				*
++				* tegra_sinterface = "";
++				* CSI Serial interface connected to tegra
++				* Incase of virtual HW devices, use virtual
++				* For SW emulated devices, use host
++				*
++				* pix_clk_hz = "";
++				* Sensor pixel clock used for calculations like exposure and framerate
++				*
++				* readout_orientation = "0";
++				* Based on camera module orientation.
++				* Only change readout_orientation if you specifically
++				* Program a different readout order for this mode
++				*
++				* == Image format Properties ==
++				*
++				* active_w = "";
++				* Pixel active region width
++				*
++				* active_h = "";
++				* Pixel active region height
++				*
++				* pixel_t = "";
++				* The sensor readout pixel pattern
++				*
++				* line_length = "";
++				* Pixel line length (width) for sensor mode.
++				*
++				* == Source Control Settings ==
++				*
++				* Gain factor used to convert fixed point integer to float
++				* Gain range [min_gain/gain_factor, max_gain/gain_factor]
++				* Gain step [step_gain/gain_factor is the smallest step that can be configured]
++				* Default gain [Default gain to be initialized for the control.
++				*     use min_gain_val as default for optimal results]
++				* Framerate factor used to convert fixed point integer to float
++				* Framerate range [min_framerate/framerate_factor, max_framerate/framerate_factor]
++				* Framerate step [step_framerate/framerate_factor is the smallest step that can be configured]
++				* Default Framerate [Default framerate to be initialized for the control.
++				*     use max_framerate to get required performance]
++				* Exposure factor used to convert fixed point integer to float
++				* For convenience use 1 sec = 1000000us as conversion factor
++				* Exposure range [min_exp_time/exposure_factor, max_exp_time/exposure_factor]
++				* Exposure step [step_exp_time/exposure_factor is the smallest step that can be configured]
++				* Default Exposure Time [Default exposure to be initialized for the control.
++				*     Set default exposure based on the default_framerate for optimal exposure settings]
++				*
++				* gain_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_gain_val = ""; (ceil to integer)
++				* max_gain_val = ""; (ceil to integer)
++				* step_gain_val = ""; (ceil to integer)
++				* default_gain = ""; (ceil to integer)
++				* Gain limits for mode
++				*
++				* exposure_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_exp_time = ""; (ceil to integer)
++				* max_exp_time = ""; (ceil to integer)
++				* step_exp_time = ""; (ceil to integer)
++				* default_exp_time = ""; (ceil to integer)
++				* Exposure Time limits for mode (sec)
++				*
++				* framerate_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_framerate = ""; (ceil to integer)
++				* max_framerate = ""; (ceil to integer)
++				* step_framerate = ""; (ceil to integer)
++				* default_framerate = ""; (ceil to integer)
++				* Framerate limits for mode (fps)
++				*
++				* embedded_metadata_height = "";
++				* Sensor embedded metadata height in units of rows.
++				* If sensor does not support embedded metadata value should be 0.
++				*/
++
++				mode0 { //MIRA030_MODE_640X480_0, 12bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "12"; 
++					csi_pixel_bit_depth = "12"; 
++					pixel_t = "bayer_grbg12";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode1 { //MIRA030_MODE_480X360_2, 12bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "12"; 
++					csi_pixel_bit_depth = "12"; 
++					pixel_t = "bayer_grbg12";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				mode2 { //MIRA030_MODE_640X480_4, 10bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "10"; 
++					csi_pixel_bit_depth = "10"; 
++					pixel_t = "bayer_grbg10";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode3 { //MIRA030_MODE_480X360_6, 10bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "10"; 
++					csi_pixel_bit_depth = "10"; 
++					pixel_t = "bayer_grbg10";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				mode4 { //MIRA030_MODE_640X480_8, 8bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8"; 
++					csi_pixel_bit_depth = "8"; 
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode5 { //MIRA030_MODE_480X360_10, 8bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8"; 
++					csi_pixel_bit_depth = "8"; 
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode6 { //MIRA030_MODE_640X480_12, 8bit, 1-50fps, 1-lane
++					mclk_khz = "24000";
++					num_lanes = "1"; 
++					tegra_sinterface = "serial_a"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8";
++					csi_pixel_bit_depth = "8";
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "50000000";/*50*/
++					step_framerate = "1";
++					default_framerate = "50000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				ports {
++					#address-cells = <1>;
++					#size-cells = <0>;
++
++					port@0 {
++						reg = <0>;
++						csg1k_dual_out0: endpoint {
++							port-index = <0>;
++							bus-width = <2>;
++							remote-endpoint = <&csg1k_csi_in0>;
++						};
++					};
++				};
++			};
++		};
++		i2c_1: i2c@1 {
++			csg1k_cam1: csg1k_e@30 {
++				compatible = "nvidia,csg1k";
++				/* I2C device address */
++				reg = <0x30>;
++
++				/* V4L2 device node location */
++				devnode = "video1";
++
++				/* Physical dimensions of sensor */
++				physical_w = "3.680";
++				physical_h = "2.760";
++
++				sensor_model = "csg1k";
++				status="okay";
++				use_sensor_mode_id = "true";
++				sensor-bpp = "12"; // used for V4L2 tools
++				platform-type = "nano"; // used for driver
++				/* Sensor output flip settings */
++				vertical-flip = "true";
++
++				/**
++				* ==== Modes ====
++				* A modeX node is required to support v4l2 driver
++				* implementation with NVIDIA camera software stack
++				*
++				* == Signal properties ==
++				*
++				* phy_mode = "";
++				* PHY mode used by the MIPI lanes for this device
++				*
++				* tegra_sinterface = "";
++				* CSI Serial interface connected to tegra
++				* Incase of virtual HW devices, use virtual
++				* For SW emulated devices, use host
++				*
++				* pix_clk_hz = "";
++				* Sensor pixel clock used for calculations like exposure and framerate
++				*
++				* readout_orientation = "0";
++				* Based on camera module orientation.
++				* Only change readout_orientation if you specifically
++				* Program a different readout order for this mode
++				*
++				* == Image format Properties ==
++				*
++				* active_w = "";
++				* Pixel active region width
++				*
++				* active_h = "";
++				* Pixel active region height
++				*
++				* pixel_t = "";
++				* The sensor readout pixel pattern
++				*
++				* line_length = "";
++				* Pixel line length (width) for sensor mode.
++				*
++				* == Source Control Settings ==
++				*
++				* Gain factor used to convert fixed point integer to float
++				* Gain range [min_gain/gain_factor, max_gain/gain_factor]
++				* Gain step [step_gain/gain_factor is the smallest step that can be configured]
++				* Default gain [Default gain to be initialized for the control.
++				*     use min_gain_val as default for optimal results]
++				* Framerate factor used to convert fixed point integer to float
++				* Framerate range [min_framerate/framerate_factor, max_framerate/framerate_factor]
++				* Framerate step [step_framerate/framerate_factor is the smallest step that can be configured]
++				* Default Framerate [Default framerate to be initialized for the control.
++				*     use max_framerate to get required performance]
++				* Exposure factor used to convert fixed point integer to float
++				* For convenience use 1 sec = 1000000us as conversion factor
++				* Exposure range [min_exp_time/exposure_factor, max_exp_time/exposure_factor]
++				* Exposure step [step_exp_time/exposure_factor is the smallest step that can be configured]
++				* Default Exposure Time [Default exposure to be initialized for the control.
++				*     Set default exposure based on the default_framerate for optimal exposure settings]
++				*
++				* gain_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_gain_val = ""; (ceil to integer)
++				* max_gain_val = ""; (ceil to integer)
++				* step_gain_val = ""; (ceil to integer)
++				* default_gain = ""; (ceil to integer)
++				* Gain limits for mode
++				*
++				* exposure_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_exp_time = ""; (ceil to integer)
++				* max_exp_time = ""; (ceil to integer)
++				* step_exp_time = ""; (ceil to integer)
++				* default_exp_time = ""; (ceil to integer)
++				* Exposure Time limits for mode (sec)
++				*
++				* framerate_factor = ""; (integer factor used for floating to fixed point conversion)
++				* min_framerate = ""; (ceil to integer)
++				* max_framerate = ""; (ceil to integer)
++				* step_framerate = ""; (ceil to integer)
++				* default_framerate = ""; (ceil to integer)
++				* Framerate limits for mode (fps)
++				*
++				* embedded_metadata_height = "";
++				* Sensor embedded metadata height in units of rows.
++				* If sensor does not support embedded metadata value should be 0.
++				*/
++
++				mode0 { //MIRA030_MODE_640X480_0, 12bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_e"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "12"; 
++					csi_pixel_bit_depth = "12"; 
++					pixel_t = "bayer_grbg12";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode1 { //MIRA030_MODE_480X360_2, 12bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_e"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "12"; 
++					csi_pixel_bit_depth = "12"; 
++					pixel_t = "bayer_grbg12";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				mode2 { //MIRA030_MODE_640X480_4, 10bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_e"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "10"; 
++					csi_pixel_bit_depth = "10"; 
++					pixel_t = "bayer_grbg10";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode3 { //MIRA030_MODE_480X360_6, 10bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_e"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "10"; 
++					csi_pixel_bit_depth = "10"; 
++					pixel_t = "bayer_grbg10";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				mode4 { //MIRA030_MODE_640X480_8, 8bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_e"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8"; 
++					csi_pixel_bit_depth = "8"; 
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode5 { //MIRA030_MODE_480X360_10, 8bit, 1-60fps
++					mclk_khz = "24000";
++					num_lanes = "2"; 
++					tegra_sinterface = "serial_e"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8"; 
++					csi_pixel_bit_depth = "8"; 
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "480";
++					active_h = "360";
++					readout_orientation = "0";
++					line_length = "480";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "60000000";/*60*/
++					step_framerate = "1";
++					default_framerate = "60000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++
++				mode6 { //MIRA030_MODE_640X480_12, 8bit, 1-50fps, 1-lane
++					mclk_khz = "24000";
++					num_lanes = "1"; 
++					tegra_sinterface = "serial_e"; 
++					discontinuous_clk = "no";
++					dpcm_enable = "false";
++					cil_settletime = "0";
++					embedded_metadata_height = "0";
++					dynamic_pixel_bit_depth = "8";
++					csi_pixel_bit_depth = "8";
++					pixel_t = "bayer_grbg8";
++					mode_type = "bayer";
++					pixel_phase = "grbg";
++					phy_mode = "DPHY";
++					active_w = "640";
++					active_h = "480";
++					readout_orientation = "0";
++					line_length = "640";
++					inherent_gain = "1";
++					mclk_multiplier = "20.0";
++					pix_clk_hz = "108000000";
++
++					gain_factor = "10";
++					min_gain_val = "10";/* 1DB*/
++					max_gain_val = "10";/* 1DB*/
++					step_gain_val = "1";
++					default_gain = "10";
++					min_hdr_ratio = "1";
++					max_hdr_ratio = "1";
++					framerate_factor = "1000000";
++					min_framerate = "1000000";/*1 */
++					max_framerate = "50000000";/*50*/
++					step_framerate = "1";
++					default_framerate = "50000000";
++					exposure_factor = "1000000";
++					min_exp_time = "10";/* us */
++					max_exp_time = "10000";/* us */
++					step_exp_time = "1";
++					default_exp_time = "10000";/* us */
++				};
++				ports {
++					#address-cells = <1>;
++					#size-cells = <0>;
++
++					port@0 {
++						reg = <0>;
++						csg1k_out1: endpoint {
++							port-index = <4>;
++							bus-width = <2>;
++							remote-endpoint = <&csg1k_csi_in1>;
++						};
++					};
++				};
++			};
++		};
++	};
++
++	lens_csg1k@RBPCV2 {
++		min_focus_distance = "0.0";
++		hyper_focal = "0.0";
++		focal_length = "3.04";
++		f_number = "2.0";
++		aperture = "0.0";
++	};
++};
++
++/ {
++	tcp: tegra-camera-platform {
++		compatible = "nvidia, tegra-camera-platform";
++
++		/**
++		* Physical settings to calculate max ISO BW
++		*
++		* num_csi_lanes = <>;
++		* Total number of CSI lanes when all cameras are active
++		*
++		* max_lane_speed = <>;
++		* Max lane speed in Kbit/s
++		*
++		* min_bits_per_pixel = <>;
++		* Min bits per pixel
++		*
++		* vi_peak_byte_per_pixel = <>;
++		* Max byte per pixel for the VI ISO case
++		*
++		* vi_bw_margin_pct = <>;
++		* Vi bandwidth margin in percentage
++		*
++		* max_pixel_rate = <>;
++		* Max pixel rate in Kpixel/s for the ISP ISO case
++		*
++		* isp_peak_byte_per_pixel = <>;
++		* Max byte per pixel for the ISP ISO case
++		*
++		* isp_bw_margin_pct = <>;
++		* Isp bandwidth margin in percentage
++		*/
++		num_csi_lanes = <4>;
++		max_lane_speed = <1500000>;
++		min_bits_per_pixel = <10>;
++		vi_peak_byte_per_pixel = <2>;
++		vi_bw_margin_pct = <25>;
++		max_pixel_rate = <240000>;
++		isp_peak_byte_per_pixel = <5>;
++		isp_bw_margin_pct = <25>;
++
++		/**
++		 * The general guideline for naming badge_info contains 3 parts, and is as follows,
++		 * The first part is the camera_board_id for the module; if the module is in a FFD
++		 * platform, then use the platform name for this part.
++		 * The second part contains the position of the module, ex. "rear" or "front".
++		 * The third part contains the last 6 characters of a part number which is found
++		 * in the module's specsheet from the vendor.
++		 */
++		modules {
++			cam_module0: module0 {
++				badge = "porg_front_RBPCV2";
++				status="okay";
++				position = "front";
++				orientation = "1";
++				cam_module0_drivernode0: drivernode0 {
++					pcl_id = "v4l2_sensor";
++					devname = "csg1k 7-0030";
++					proc-device-tree = "/proc/device-tree/cam_i2cmux/i2c@0/csg1k_a@30";
++				};
++				cam_module0_drivernode1: drivernode1 {
++					pcl_id = "v4l2_lens";
++					proc-device-tree = "/proc/device-tree/lens_csg1k@RBPCV2/";
++				};
++			};
++			cam_module1: module1 {
++				badge = "porg_rear_RBPCV2";
++				status="okay";
++				position = "rear";
++				orientation = "1";
++				cam_module1_drivernode0: drivernode0 {
++					pcl_id = "v4l2_sensor";
++					devname = "csg1k 8-0030";
++					proc-device-tree = "/proc/device-tree/cam_i2cmux/i2c@1/csg1k_e@30";
++				};
++				cam_module1_drivernode1: drivernode1 {
++					pcl_id = "v4l2_lens";
++					proc-device-tree = "/proc/device-tree/lens_csg1k@RBPCV2/";
++				};
++			};
++		};
++	};
++};
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-csg1k.dtsi hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-csg1k.dtsi
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-csg1k.dtsi	1970-01-01 01:00:00.000000000 +0100
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-csg1k.dtsi	2021-11-30 12:30:31.767232097 +0100
+@@ -0,0 +1,46 @@
++/*
++ * Copyright (c) 2018-2019, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "tegra210-camera-csg1k.dtsi"
++
++#define CAM1_PWDN		TEGRA_GPIO(S, 7)
++
++/ {
++    host1x {
++		i2c@546c0000 {
++			csg1k_a@30 {
++				status="okay";
++				reset-gpios = <&gpio CAM1_PWDN GPIO_ACTIVE_HIGH>;
++				/* Define any required hw resources needed by driver */
++				/* ie. clocks, io pins, power sources */
++				clocks = <&tegra_car TEGRA210_CLK_CLK_OUT_3>;
++				clock-names = "clk_out_3";
++				clock-frequency = <24000000>;
++				mclk = "clk_out_3";
++			};
++		};
++	};
++
++    gpio@6000d000 {
++		camera-control-output-low {
++			gpio-hog;
++			output-low;
++			gpios = < CAM1_PWDN 0 >;
++			label = "cam1-pwdn";
++		};
++	};
++};
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-dual-csg1k.dtsi hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-dual-csg1k.dtsi
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-dual-csg1k.dtsi	1970-01-01 01:00:00.000000000 +0100
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/porg-platforms/tegra210-porg-camera-dual-csg1k.dtsi	2021-11-30 12:31:33.391872240 +0100
+@@ -0,0 +1,77 @@
++/*
++ * Copyright (c) 2018-2019, NVIDIA CORPORATION.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "tegra210-camera-dual-csg1k.dtsi"
++
++#define CAM1_PWDN		TEGRA_GPIO(S, 7)
++#define CAM2_PWDN		TEGRA_GPIO(T, 0)
++//#define CAM_I2C_MUX TEGRA_GPIO(I, 0) // NFC_EN GPIO
++#define CAM_I2C_MUX_dummy	TEGRA_GPIO(E, 6) //add
++
++/ {
++	cam_i2cmux {
++		compatible = "i2c-mux-gpio";
++		#address-cells = <1>;
++		#size-cells = <0>;
++		mux-gpios = <&gpio CAM_I2C_MUX_dummy GPIO_ACTIVE_HIGH>;
++		i2c-parent = <&i2c7>;
++		status = "okay";
++		i2c@0 {
++//			status="okay";
++			reg = <0>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			csg1k_a@30 {
++				status="okay";
++				reset-gpios = <&gpio CAM1_PWDN GPIO_ACTIVE_HIGH>;
++				//mux-gpios = <&gpio CAM_I2C_MUX GPIO_ACTIVE_HIGH>;
++				/* Define any required hw resources needed by driver */
++				/* ie. clocks, io pins, power sources */
++				clocks = <&tegra_car TEGRA210_CLK_CLK_OUT_3>;
++				clock-names = "clk_out_3";
++				clock-frequency = <24000000>;
++				mclk = "clk_out_3";
++			};
++		};
++		i2c@1 {
++//			status="okay";
++			reg = <1>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++			csg1k_e@30 {
++				status="okay";
++				reset-gpios = <&gpio CAM2_PWDN GPIO_ACTIVE_HIGH>;
++				//mux-gpios = <&gpio CAM_I2C_MUX GPIO_ACTIVE_HIGH>;
++				/* Define any required hw resources needed by driver */
++				/* ie. clocks, io pins, power sources */
++				clocks = <&tegra_car TEGRA210_CLK_CLK_OUT_3>;
++				clock-names = "clk_out_3";
++				clock-frequency = <24000000>;
++				mclk = "clk_out_3";				
++			};
++		};
++	};
++
++	gpio@6000d000 {
++		camera-control-output-low {
++			gpio-hog;
++			output-low;
++			gpios = < CAM1_PWDN 0  CAM2_PWDN 0>;//gpios = < CAM1_PWDN 0  CAM2_PWDN 0 CAM_I2C_MUX 0 >;
++			label = "cam1-pwdn", "cam2-pwdn";//label = "cam1-pwdn", "cam2-pwdn", "CAM_I2C_MUX";
++		};
++	};
++};
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a00.dts hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a00.dts
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a00.dts	2021-07-26 21:08:25.000000000 +0200
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a00.dts	2021-10-19 16:26:36.000000000 +0200
+@@ -21,6 +21,7 @@
+ #include "tegra210-porg-p3448-common.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv3-imx477.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv2-imx219.dtsi"
++#include "porg-platforms/tegra210-porg-camera-csg1k.dtsi"
+ #include "porg-platforms/tegra210-porg-pinmux-p3448-0000-a00.dtsi"
+ #include "porg-platforms/tegra210-porg-gpio-p3448-0000-a00.dtsi"
+ #include "porg-platforms/tegra210-porg-p3448-emc-a00.dtsi"
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a01.dts hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a01.dts
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a01.dts	2021-07-26 21:08:25.000000000 +0200
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a01.dts	2021-10-19 16:26:26.000000000 +0200
+@@ -21,6 +21,7 @@
+ #include "tegra210-porg-p3448-common.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv3-imx477.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv2-imx219.dtsi"
++#include "porg-platforms/tegra210-porg-camera-csg1k.dtsi"
+ #include "porg-platforms/tegra210-porg-pinmux-p3448-0000-a01.dtsi"
+ #include "porg-platforms/tegra210-porg-gpio-p3448-0000-a01.dtsi"
+ #include "porg-platforms/tegra210-porg-p3448-emc-a00.dtsi"
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts	2021-07-26 21:08:25.000000000 +0200
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts	2021-10-19 16:25:38.000000000 +0200
+@@ -21,6 +21,7 @@
+ #include "tegra210-porg-p3448-common.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv3-imx477.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv2-imx219.dtsi"
++#include "porg-platforms/tegra210-porg-camera-csg1k.dtsi"
+ #include "porg-platforms/tegra210-porg-pinmux-p3448-0000-a02.dtsi"
+ #include "porg-platforms/tegra210-porg-gpio-p3448-0000-a02.dtsi"
+ #include "porg-platforms/tegra210-porg-p3448-emc-a00.dtsi"
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-b00.dts hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-b00.dts
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-b00.dts	2021-07-26 21:08:25.000000000 +0200
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-b00.dts	2021-10-19 16:25:30.000000000 +0200
+@@ -21,6 +21,7 @@
+ #include "tegra210-porg-p3448-common.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv3-dual-imx477.dtsi"
+ #include "porg-platforms/tegra210-porg-camera-rbpcv2-dual-imx219.dtsi"
++#include "porg-platforms/tegra210-porg-camera-dual-csg1k.dtsi"
+ #include "porg-platforms/tegra210-porg-pinmux-p3448-0000-b00.dtsi"
+ #include "porg-platforms/tegra210-porg-gpio-p3448-0000-b00.dtsi"
+ #include "porg-platforms/tegra210-porg-p3448-emc-a00.dtsi"
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-all-p3449-0000-camera-csg1k-dual.dts hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-all-p3449-0000-camera-csg1k-dual.dts
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-all-p3449-0000-camera-csg1k-dual.dts	1970-01-01 01:00:00.000000000 +0100
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-all-p3449-0000-camera-csg1k-dual.dts	2021-11-05 14:26:51.929054584 +0100
+@@ -0,0 +1,115 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Jetson Device-tree overlay for Camera CSG1K for t210 single
++ * cam connector baseboards
++ *
++ * Copyright (c) 2021 NVIDIA CORPORATION. All rights reserved.
++ *
++ */
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	overlay-name = "Camera CSG1K Dual";
++	jetson-header-name = "Jetson Nano CSI Connector";
++	compatible = "nvidia,p3449-0000-b00+p3448-0000-b00", "nvidia,p3449-0000-b00+p3448-0002-b00";
++
++	/* CSG1K dual sensor module */
++	fragment@0 {
++		target = <&csg1k_cam0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++	fragment@1 {
++		target = <&cam_module0>;
++		__overlay__ {
++			status = "okay";
++			badge = "porg_front_RBPCV2";
++			position = "front";
++			orientation = "1";
++		};
++	};
++	fragment@2 {
++		target = <&cam_module0_drivernode0>;
++		__overlay__ {
++			status = "okay";
++			pcl_id = "v4l2_sensor";
++			devname = "csg1k 7-0030";
++			proc-device-tree = "/proc/device-tree/cam_i2cmux/i2c@0/csg1k_a@30";
++		};
++	};
++	fragment@3 {
++		target = <&csg1k_cam1>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++	fragment@4 {
++		target = <&cam_module1>;
++		__overlay__ {
++			status = "okay";
++			badge = "porg_rear_RBPCV2";
++			position = "rear";
++			orientation = "1";
++		};
++	};
++	fragment@5 {
++		target = <&cam_module1_drivernode0>;
++		__overlay__ {
++			status = "okay";
++			pcl_id = "v4l2_sensor";
++			devname = "csg1k 8-0030";
++			proc-device-tree = "/proc/device-tree/cam_i2cmux/i2c@1/csg1k_e@30";
++		};
++	};
++	fragment@6 {
++		target = <&csg1k_vi_in0>;
++		__overlay__ {
++			status = "okay";
++			port-index = <0>;
++			bus-width = <2>;
++			remote-endpoint = <&csg1k_csi_out0>;
++		};
++	};
++	fragment@7 {
++		target = <&csg1k_vi_in1>;
++		__overlay__ {
++			status = "okay";
++			port-index = <4>;
++			bus-width = <2>;
++			remote-endpoint = <&csg1k_csi_out1>;
++		};
++	};
++	fragment@8 {
++		target = <&csg1k_csi_in0>;
++		__overlay__ {
++			status = "okay";
++			port-index = <0>;
++			bus-width = <2>;
++			remote-endpoint = <&csg1k_dual_out0>;
++		};
++	};
++	fragment@9 {
++		target = <&csg1k_csi_out0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++	fragment@10 {
++		target = <&csg1k_csi_in1>;
++		__overlay__ {
++			status = "okay";
++			port-index = <4>;
++			bus-width = <2>;
++			remote-endpoint = <&csg1k_out1>;
++		};
++	};
++	fragment@12 {
++		target = <&csg1k_csi_out1>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff -ruN hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-common-csg1k.dts hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-common-csg1k.dts
+--- hardware_ORIG/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-common-csg1k.dts	1970-01-01 01:00:00.000000000 +0100
++++ hardware_mira030/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-common-csg1k.dts	2021-11-05 14:26:47.129010382 +0100
+@@ -0,0 +1,122 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Jetson Device-tree overlay for Camera csg1k on
++ * t210 single cam connector baseboards
++ *
++ * Copyright (c) 2021 NVIDIA CORPORATION. All rights reserved.
++ *
++ */
++
++/dts-v1/;
++/plugin/;
++
++/ {
++	overlay-name = "Camera CSG1K";
++	jetson-header-name = "Jetson Nano CSI Connector";
++	compatible = "nvidia,p3542-0000+p3448-0003", "nvidia,p3449-0000-a02+p3448-0000-a02","nvidia,p3449-0000-a01+p3448-0000-a01";
++
++	/* CSG1K single sensor module */
++	fragment@0 {
++		target = <&csg1k_single_cam0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++
++	fragment@1 {
++		target = <&cam_module0>;
++		__overlay__ {
++			status = "okay";
++			badge = "porg_front_RBPCV2";
++			position = "front";
++			orientation = "1";
++		};
++	};
++	fragment@2 {
++		target = <&cam_module0_drivernode0>;
++		__overlay__ {
++			status = "okay";
++			pcl_id = "v4l2_sensor";
++			devname = "csg1k 6-0030";
++			proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/csg1k_a@30";
++		};
++	};
++
++	/* Enable VI ports */
++	fragment@3 {
++		target = <&vi_base>;
++		__overlay__ {
++			num-channels=<1>;
++		};
++	};
++	fragment@4 {
++		target = <&vi_port0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++	fragment@5 {
++		target = <&csg1k_vi_in0>;
++		__overlay__ {
++			status = "okay";
++			port-index = <0>;
++			bus-width = <2>;
++			remote-endpoint = <&csg1k_csi_out0>;
++		};
++	};
++	/* Enable CSI ports */
++	fragment@6 {
++		target = <&csi_base>;
++		__overlay__ {
++			num-channels=<1>;
++		};
++	};
++	fragment@7 {
++		target = <&csi_chan0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++	fragment@8 {
++		target = <&csi_chan0_port0>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++	fragment@9 {
++		target = <&csg1k_csi_in0>;
++		__overlay__ {
++			status = "okay";
++			port-index = <0>;
++			bus-width = <2>;
++			remote-endpoint = <&csg1k_out0>;
++		};
++	};
++	fragment@10 {
++		target = <&csi_chan0_port1>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++	fragment@11 {
++		target = <&csg1k_csi_out0>;
++		__overlay__ {
++			status = "okay";
++			remote-endpoint = <&csg1k_vi_in0>;
++		};
++	};
++	/* tegra-camera-platform settings */
++	fragment@12 {
++		target = <&tcp>;
++		__overlay__ {
++			num_csi_lanes = <2>;
++			max_lane_speed = <1500000>;
++			min_bits_per_pixel = <10>;
++			vi_peak_byte_per_pixel = <2>;
++			vi_bw_margin_pct = <25>;
++			max_pixel_rate = <240000>;
++			isp_peak_byte_per_pixel = <5>;
++			isp_bw_margin_pct = <25>;
++		};
++	};
++};
