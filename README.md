@@ -49,7 +49,7 @@ ln -s kernel_ams kernel
 patch the files:
 first copy the patch files in the Linux_for_Tegra/source/public folder.
 ```
-patch -p0  < kernel_30092020.patch
+patch -p0  < kernel_18012022.patch
 patch -p0 < hardware_mira130_18012022.patch
 patch -p0 < hardware_mira220_18012022.patch
 patch -p0 < hardware_mira050_18012022.patch
