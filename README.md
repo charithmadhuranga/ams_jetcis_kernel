@@ -50,10 +50,7 @@ patch the files:
 first copy the patch files in the Linux_for_Tegra/source/public folder.
 ```
 patch -p0  < kernel_18012022.patch
-patch -p0 < hardware_mira130_18012022.patch
-patch -p0 < hardware_mira220_18012022.patch
 patch -p0 < hardware_mira050_18012022.patch
-patch -p0 < hardware_mira030_18012022.patch
 
 ```
 
