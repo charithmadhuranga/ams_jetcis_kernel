@@ -35,7 +35,6 @@ tar -xvf public_sources.tbz2
 cd Linux_for_Tegra/source/public
 JETSON_NANO_KERNEL_SOURCE=$(pwd)
 tar -xf kernel_src.tbz2
-
 ```
 TBD: patch the files
 ```
@@ -43,20 +42,17 @@ cp kernel kernel_ams -r
 cp hardware hardware_mira050 -r
 mv kernel kernel_orig
 mv hardware hardware_orig
-
 ```
 create symlinks
 ```
 ln -s hardware_mira050 hardware
 ln -s kernel_ams kernel
-
 ```
 patch the files:
 first copy the patch files in the Linux_for_Tegra/source/public folder.
 ```
 patch -p0  < kernel_18012022.patch
 patch -p0 < hardware_mira050_18012022.patch
-
 ```
 
 
@@ -72,14 +68,13 @@ make -C kernel/kernel-4.9/ ARCH=arm64 O=$TEGRA_KERNEL_OUT LOCALVERSION=-tegra CR
 make -C kernel/kernel-4.9/ ARCH=arm64 O=$TEGRA_KERNEL_OUT LOCALVERSION=-tegra CROSS_COMPILE=${TOOLCHAIN_PREFIX} -j8 --output-sync=target modules
 make -C kernel/kernel-4.9/ ARCH=arm64 O=$TEGRA_KERNEL_OUT LOCALVERSION=-tegra CROSS_COMPILE=${TOOLCHAIN_PREFIX} -j8 --output-sync=target dtbs
 make -C kernel/kernel-4.9/ ARCH=arm64 O=$TEGRA_KERNEL_OUT LOCALVERSION=-tegra INSTALL_MOD_PATH=$KERNEL_MODULES_OUT modules_install
-
+echo done
 ```
 
 the newly built kernels and devicetree can be copied and used directly in the application
 ```
 $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/boot/Image
 $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/boot/dts/tegra210-p3448-0000-p3449-0000-a02.dtb
-
 ```
 ## On jetson nano
 copy the new device trees to the nano
@@ -88,7 +83,6 @@ sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-0000-p3449-000
 sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-0000-p3449-0000-b00.dtb /boot/dt/kernel_tegra210-p3448-0000-p3449-0000-b00.dtb
 sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-all-p3449-0000-camera-csg1k-dual.dtbo /boot/
 sudo cp /home/nano/mira050_one_lane_new_devicetree/tegra210-p3448-common-csg1k.dtbo /boot/
-
 ```
 use this tool to config the CSI Interface:
 
