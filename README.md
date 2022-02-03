@@ -8,8 +8,11 @@ https://developer.nvidia.com/embedded/linux-tegra-r3261
 # Building the kernel
 
 ## prep
-You need an Ubuntu 18.04 or 20.04 machine with x86 architecture.
+We recommend an Ubuntu 18.04 or 20.04 machine with x86 architecture.
 WSL also works.
+Fedora linux also works for cross compiling, but this fix needs to be applied: (for more recent linux distros)
+https://forums.developer.nvidia.com/t/failed-to-make-l4t-kernel-dts/116399/7
+
 
 ```
 sudo apt-get update
