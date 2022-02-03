@@ -54,8 +54,9 @@ first copy the patch files in the Linux_for_Tegra/source/public folder.
 patch -p0  < kernel_18012022.patch
 patch -p0 < hardware_mira050_18012022.patch
 ```
-
-
+`nano $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9/arch/arm64/configs/tegra_defconfig`
+add this line to 
+`CONFIG_VIDEO_CSG1K=y`
 
 Compile
 ```
